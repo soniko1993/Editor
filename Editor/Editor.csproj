@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net5.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="icon\DeleteImg.png" />
+    <None Remove="icon\FIllBorder.png" />
+    <None Remove="icon\FillImg.png" />
+    <None Remove="icon\LineImg.bmp" />
+    <None Remove="icon\MoveImg.png" />
+    <None Remove="icon\RectImg.bmp" />
+    <None Remove="icon\RotateImg.png" />
+    <None Remove="icon\Scale.png" />
+    <None Remove="icon\ScaleImg.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Extended.Wpf.Toolkit" Version="4.0.2">
+      <NoWarn>NU1701</NoWarn>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="icon\DeleteImg.png" />
+    <Resource Include="icon\FIllBorder.png" />
+    <Resource Include="icon\FillImg.png" />
+    <Resource Include="icon\LineImg.bmp" />
+    <Resource Include="icon\MoveImg.png" />
+    <Resource Include="icon\RectImg.bmp" />
+    <Resource Include="icon\RotateImg.png" />
+    <Resource Include="icon\ScaleImg.png" />
+  </ItemGroup>
+
+</Project>
