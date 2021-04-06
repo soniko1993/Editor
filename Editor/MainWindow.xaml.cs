@@ -21,35 +21,36 @@ namespace Editor
     /// </summary>
 
     public partial class MainWindow : Window
-    {
-         // Pressed button on toolbar, 0 = all uncheked
-        Point mousePosition;
-        Point mousePositionLocal;
+    {      
+        Point mousePosition;//местоположение мыши
         GraphicElements graphicElements;
-        Shape currentFigure;
+        Shape currentFigure;//выбранный примитив
 
+        
+        //Тип нажатой кнопки
         private enum ButtonType
         {
            NoneB, rectB, lineB, fillB, deleteB, rotateB, moveB, scaleB, FillBorderB
         };
-        ButtonType selectedAction=0;
-        int previousMouseState = 0; // 0 - nothing; 1- press; 2-up;
-        int ClickCount = 0;
-        double thickness;
-        HitType HT;
-        bool polylinestate = false;
+        ButtonType selectedAction=0;    
+        int previousMouseState = 0; // 0 - nothing; 1- press; 2-up; Предыдущее состояние мыши
+        int ClickCount = 0; // количество кликов
+        double thickness;   //толщина границ примитивов
+        HitType hitType;       //Местоположение границы при изменении размера
+        bool polylinestate = false; //Статус добавление точек в линию с изломами
         public MainWindow()
         {
             InitializeComponent();
             thickness = Convert.ToDouble(FigureThickness.Text);
             graphicElements = new GraphicElements(WorkSpace);
 
-
         }        
-       void ButtonChecker(ButtonType bt)
+
+        //Определение нажатой кнопки на панели инструментов
+       void ButtonChecker(ButtonType buttonType)
         {
-            selectedAction = bt;
-            switch (bt)
+            selectedAction = buttonType;
+            switch (buttonType)
             {
                 case ButtonType.rectB: if (CreateRectangleButton.IsChecked == false) selectedAction = ButtonType.NoneB; break;
                 case ButtonType.lineB: if (CreateLineButton.IsChecked == false) selectedAction = ButtonType.NoneB; break;
@@ -59,339 +60,372 @@ namespace Editor
                 case ButtonType.moveB: if (MoveButton.IsChecked == false) selectedAction = ButtonType.NoneB; break;
                 case ButtonType.scaleB: if (ScaleButton.IsChecked == false) selectedAction = ButtonType.NoneB; break;
                 case ButtonType.FillBorderB: if (FillBorderButton.IsChecked == false) selectedAction = ButtonType.NoneB; break;
-        }
-            if(bt!= ButtonType.rectB)
+            }
+            if(buttonType!= ButtonType.rectB)
                 CreateRectangleButton.IsChecked = false;
-            if (bt != ButtonType.fillB)
+            if (buttonType != ButtonType.fillB)
                 FillButton.IsChecked = false;
-            if (bt != ButtonType.deleteB)
+            if (buttonType != ButtonType.deleteB)
                 DeleteButton.IsChecked = false;
-            if (bt != ButtonType.lineB)
+            if (buttonType != ButtonType.lineB)
                 CreateLineButton.IsChecked = false;
-            if (bt != ButtonType.moveB)
+            if (buttonType != ButtonType.moveB)
                 MoveButton.IsChecked = false;
-            if (bt != ButtonType.rotateB)
+            if (buttonType != ButtonType.rotateB)
                 RotateButton.IsChecked = false;
-            if (bt != ButtonType.scaleB)
+            if (buttonType != ButtonType.scaleB)
                 ScaleButton.IsChecked = false;
-            if (bt != ButtonType.FillBorderB)
+            if (buttonType != ButtonType.FillBorderB)
                 FillBorderButton.IsChecked = false;
             ClickCount = 0;
             
         }
         private void CreateRectangleButton_Click(object sender, RoutedEventArgs e)
-        {        
-                selectedAction = ButtonType.rectB;
-                ButtonChecker(selectedAction);
+        {
+            polylinestate = false;
+            selectedAction = ButtonType.rectB;
+            ButtonChecker(selectedAction);
         }
 
         private void CreateLineButton_Click(object sender, RoutedEventArgs e)
         {
-
-                selectedAction = ButtonType.lineB;
-                ButtonChecker(selectedAction);
+            polylinestate = false;
+            selectedAction = ButtonType.lineB;
+            ButtonChecker(selectedAction);
 
         }
 
         private void FillButton_Click(object sender, RoutedEventArgs e)
         {
-                selectedAction = ButtonType.fillB;
-                ButtonChecker(selectedAction);
+            polylinestate = false;
+            selectedAction = ButtonType.fillB;
+            ButtonChecker(selectedAction);
 
         }
 
         private void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
-                selectedAction = ButtonType.deleteB;
-                ButtonChecker(selectedAction);
+            polylinestate = false;
+            selectedAction = ButtonType.deleteB;
+            ButtonChecker(selectedAction);
 
         }
         private void RotateButton_Click(object sender, RoutedEventArgs e)
         {
-                selectedAction = ButtonType.rotateB;
-                ButtonChecker(selectedAction);
+            polylinestate = false;
+            selectedAction = ButtonType.rotateB;
+            ButtonChecker(selectedAction);
         }
 
         private void MoveButton_Click(object sender, RoutedEventArgs e)
         {
-
-                selectedAction = ButtonType.moveB;
-                ButtonChecker(selectedAction);
+            polylinestate = false;
+            selectedAction = ButtonType.moveB;
+            ButtonChecker(selectedAction);
 
         }
         private void ScaleButton_Click(object sender, RoutedEventArgs e)
         {
-                selectedAction = ButtonType.scaleB;
-                ButtonChecker(selectedAction);
+            polylinestate = false;
+            selectedAction = ButtonType.scaleB;
+           ButtonChecker(selectedAction);
         }
 
         private void FillBorderButton_Click(object sender, RoutedEventArgs e)
         {
-                selectedAction = ButtonType.FillBorderB;
-                ButtonChecker(selectedAction);
-
+            polylinestate = false;
+            selectedAction = ButtonType.FillBorderB;
+            ButtonChecker(selectedAction);
         }
         private void ColorPickerButton_Click(object sender, RoutedEventArgs e)
         {
             
         }
 
+        //Обработка действий при нажатии на ЛКМ в рабочей области
         private void WorkSpace_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             thickness = Convert.ToDouble(FigureThickness.Text);
             mousePosition = Mouse.GetPosition(WorkSpace);
             Color color = ColorPickerButton.SelectedColor.Value;
-            SolidColorBrush myBrush = new SolidColorBrush(color);
-            IInputElement II = Mouse.DirectlyOver;
+            SolidColorBrush myBrush = new(color);
+            IInputElement inputElement = Mouse.DirectlyOver;//Поиск объектов под мышью
             if (CreateLineButton.IsChecked==false)
             {
-                if (II.GetType() != typeof(Canvas))
-                    currentFigure = (Shape)II;
+                if (inputElement.GetType() != typeof(Canvas))
+                    currentFigure = (Shape)inputElement;
             }
-
-            switch (selectedAction)
+            if(selectedAction==ButtonType.NoneB)
             {
-                case 0:  break;
-                case ButtonType.rectB: 
-                    currentFigure=graphicElements.AddRectangle(new Rect(mousePosition.X , mousePosition.Y, mousePosition.X, mousePosition.Y),myBrush, Convert.ToInt16(FigureThickness.Text)); 
-                        break;
-                case ButtonType.lineB:
-                    if (polylinestate == false)
+                if (inputElement is Polyline && e.ClickCount==2)
+                {
+                    graphicElements.InsertPointIntoLine((Shape)inputElement, mousePosition);
+                }
+            }
+            else if(selectedAction == ButtonType.rectB)
+            {
+                currentFigure = graphicElements.CreateRectangle(new Rect(mousePosition.X, mousePosition.Y, mousePosition.X, mousePosition.Y), myBrush, Convert.ToInt16(FigureThickness.Text));
+            }
+            else if (selectedAction == ButtonType.lineB)
+            {
+                if (polylinestate == false)
+                {
+                    if (inputElement is Polyline)
                     {
-                        if (II.GetType() == typeof(Polyline))                     
+                        graphicElements.InsertPointIntoLine((Shape)inputElement, mousePosition);
+                    }
+                    else 
+                    {
+                        polylinestate = true;
+                        currentFigure = graphicElements.AddLine(mousePosition, myBrush, thickness);
+                    }
+                }
+                else
+                {
+                    if (currentFigure != null)
+                    {
+                        if (e.ClickCount == 2)
                         {
-                            graphicElements.InsertPointIntoLine((Shape)II, mousePosition);
+                            polylinestate = false;
                         }
                         else
                         {
-                            polylinestate = true;
-                            currentFigure = graphicElements.AddLine(mousePosition, myBrush, thickness);
-                        }                         
-                    }
-                    else
-                    {
-                        if(currentFigure!=null)
-                        {
-                            if (e.ClickCount == 2)
-                            {
-                                graphicElements.AddPointToLine(currentFigure, mousePosition);
-                                polylinestate = false;
-                            }
-                            else
-                            {
-                                graphicElements.AddPointToLine(currentFigure, mousePosition);
-                            }
+                            graphicElements.AddPointToLine(currentFigure, mousePosition);
                         }
+                    }
 
-                    }                                    
-                    break;
-                case ButtonType.fillB: if (II.GetType() != typeof(Canvas)) graphicElements.Fill(currentFigure, ColorPickerButton.SelectedColor.Value); break;
-                case ButtonType.FillBorderB: if (II.GetType() != typeof(Canvas)) graphicElements.FillBorder(currentFigure, ColorPickerButton.SelectedColor.Value,thickness); break;
-                case ButtonType.deleteB: if(II.GetType() != typeof(Canvas)) graphicElements.DeleteFigure(currentFigure); break;
-                case ButtonType.rotateB: mousePositionLocal = e.GetPosition(currentFigure); break;
-                case ButtonType.moveB: ClickCount=e.ClickCount; mousePositionLocal = e.GetPosition(currentFigure); break;
-                case ButtonType.scaleB: mousePositionLocal = e.GetPosition(currentFigure);
-                    if (II.GetType() != typeof(Canvas))
-                        HT = BorderCheck(currentFigure, mousePosition);
-                            break;
+                }
+            }
+            else if (selectedAction == ButtonType.fillB)
+            {
+                if (inputElement is not Canvas) 
+                    GraphicElements.Fill(currentFigure, ColorPickerButton.SelectedColor.Value);
+            }
+            else if (selectedAction == ButtonType.FillBorderB)
+            {
+                if (inputElement is not Canvas) 
+                    GraphicElements.FillBorder(currentFigure, ColorPickerButton.SelectedColor.Value, thickness);
+            }
+            else if (selectedAction == ButtonType.deleteB)
+            {
+                if(inputElement is not Canvas)
+                    graphicElements.DeleteFigure(currentFigure);
+            }
+            else if (selectedAction == ButtonType.moveB)
+            {
+                ClickCount = e.ClickCount;
+            }
+            else if (selectedAction == ButtonType.scaleB)
+            {
+                if (inputElement is not Canvas)
+                    hitType = BorderCheck(currentFigure, mousePosition);
             }
             previousMouseState = 1;
         }
-        
+
+        //Обработка действий при отжатии ЛКМ в рабочей области
         private void WorkSpace_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {       
-            Point mp = Mouse.GetPosition(WorkSpace);
-            Color color = ColorPickerButton.SelectedColor.Value;
-            SolidColorBrush myBrush = new SolidColorBrush(color);
-            switch (selectedAction)
+        {                 
+            if (selectedAction == ButtonType.lineB )
             {
-                case ButtonType.NoneB: currentFigure = null; break;
-                case ButtonType.rectB: currentFigure = null; break;
-                case ButtonType.lineB: if(polylinestate == false) currentFigure = null; break;
-                case ButtonType.fillB: currentFigure = null; break;
-                case ButtonType.deleteB: currentFigure = null; break;
-                case ButtonType.rotateB: currentFigure = null; break;
-                case ButtonType.moveB: 
-                    if(currentFigure!=null)
-                    {
-                        if (ClickCount == 2 && currentFigure.GetType() == typeof(Polyline))
-                        {
-                            graphicElements.UnionPoilylinePoint(currentFigure, mp);
-                            if(((Polyline)currentFigure).Points.Count<=1)
-                                WorkSpace.Children.Remove(currentFigure);
-                        }
-                        currentFigure = null;
-                    }
-                    break;
-                case ButtonType.scaleB: currentFigure = null; break;
+                if(polylinestate == false)
+                    currentFigure = null;
             }
+            else if(selectedAction == ButtonType.NoneB)
+            {
+                if (currentFigure is Polyline polyline)
+                {
+                    graphicElements.UnionPolylinePoint(currentFigure);
+                    if (polyline.Points.Count <= 1)
+                        WorkSpace.Children.Remove(currentFigure);
+                }
+                currentFigure = null;
+            }
+            else
+                currentFigure = null;
+
             ClickCount = 0;
             previousMouseState = 3;
         }
 
         private void PreviewThicknessTextInput(object sender, TextCompositionEventArgs e)
         {
-            Regex regex = new Regex("[^0-9]+");
+            Regex regex = new("[^0-9]+");
             e.Handled = regex.IsMatch(e.Text);
         }
 
-
-        HitType BorderCheck(Shape shape, Point mp)
+        //Опередление точные координаты границ прямоугольника
+        private Point[] GetCornersPosition(Shape shape)
         {
-            double angle = graphicElements.GetRotationAngle(shape);
+            Point [] corners=new Point[4];
+            double angle = GraphicElements.GetRotationAngle(shape);
+            Rect rect = GraphicElements.GetPosition(shape);
+            Point Center = GraphicElements.GetCenter(rect);
+            //Определяем координаты углов прямоугольника без учёта угла поворота
+            Point LeftTop = new(rect.X, rect.Y);
+            Point LeftBottom = new(rect.X, rect.Y + rect.Height);
+            Point RightTop = new(rect.X + rect.Width, LeftTop.Y);
+            Point RightBottom = new(rect.X + rect.Width, LeftTop.Y + rect.Height);
+            RotateTransform rotateTransform = new(angle, Center.X, Center.Y);
+            //Определяем координаты углов прямоугольника с учётом угла поворота
+            corners[0] = rotateTransform.Transform(LeftTop);
+            corners[1] = rotateTransform.Transform(LeftBottom);
+            corners[2] = rotateTransform.Transform(RightTop);
+            corners[3] = rotateTransform.Transform(RightBottom);
+            return corners;
+        }
 
-            Rect r = graphicElements.GetPosition(shape);
-            Point offset = graphicElements.GetOffset(shape);
-            Point MP = mp;
-            Point Center =new Point(r.X + r.Width / 2, r.Y + r.Height / 2);
-
-            Point LT = new Point(r.X, r.Y);
-            Point LB = new Point(r.X, r.Y + r.Height);
-            Point RT = new Point(r.X + r.Width, LT.Y);
-            Point RB = new Point(r.X + r.Width, LT.Y + r.Height);
-
-            RotateTransform rt = new RotateTransform(angle, Center.X, Center.Y);
-         
-            LT = rt.Transform(LT);
-            LB = rt.Transform(LB);
-            RT = rt.Transform(RT);
-            RB = rt.Transform(RB);
+        //Опередление положениее перемещаемой границы прямоугольника
+        HitType BorderCheck(Shape shape, Point currentMousePosition)
+        {
+            Point[] corners = GetCornersPosition(shape);
+            Point LeftTop = corners[0];
+            Point LeftBottom = corners[1];
+            Point RightTop = corners[2];
+            Point RightBottom = corners[3];
             double GAP = thickness * 2;
-            if (graphicElements.CheckIntersection(LT,LB,MP, GAP,true))
+
+            //Определяем границу, местоположение мыши на границе
+            if (GraphicElements.CheckIntersection(LeftTop,LeftBottom,currentMousePosition, GAP,true))
             {
                 // Left edge.
-                if (graphicElements.CheckIntersection(LT,RT, MP, GAP, true)) return HitType.UL;
-                if (graphicElements.CheckIntersection(LB,RB, MP, GAP, true)) return HitType.LL;
-                return HitType.L;
+                if (GraphicElements.CheckIntersection(LeftTop,RightTop, currentMousePosition, GAP, true)) return HitType.UpperLeft;
+                if (GraphicElements.CheckIntersection(LeftBottom,RightBottom, currentMousePosition, GAP, true)) return HitType.LowerLeft;
+                return HitType.Left;
             }
-            if (graphicElements.CheckIntersection(RT,RB, MP, GAP, true))
+            if (GraphicElements.CheckIntersection(RightTop,RightBottom, currentMousePosition, GAP, true))
             {
                 // Right edge.
-                if (graphicElements.CheckIntersection(LT, RT, MP, GAP, true)) return HitType.UR;
-                if (graphicElements.CheckIntersection(LB, RB, MP, GAP, true)) return HitType.LR;
-                return HitType.R;
+                if (GraphicElements.CheckIntersection(LeftTop, RightTop, currentMousePosition, GAP, true)) return HitType.UpperRight;
+                if (GraphicElements.CheckIntersection(LeftBottom, RightBottom, currentMousePosition, GAP, true)) return HitType.LowerRight;
+                return HitType.Right;
             }
-            if (graphicElements.CheckIntersection(LT, RT, MP, GAP, true)) return HitType.T;
-            if (graphicElements.CheckIntersection(LB, RB, MP, GAP, true)) return HitType.B;
+            if (GraphicElements.CheckIntersection(LeftTop, RightTop, currentMousePosition, GAP, true)) return HitType.Top;
+            if (GraphicElements.CheckIntersection(LeftBottom, RightBottom, currentMousePosition, GAP, true)) return HitType.Bottom;
             return HitType.Body;
         }
 
         private enum HitType
         {
-            None, Body, UL, UR, LR, LL, T,B,L,R,
+            None, Body, UpperLeft, UpperRight, LowerRight, LowerLeft, Top,Bottom,Left,Right
         };
+
+
+        //Определение новых размеров прямоугольника
+        private Rect GetNewSize(Shape currentFigure,Point currentMousePosition)
+        {
+            Rect rect = GraphicElements.GetPosition(currentFigure);
+            double new_x = rect.X;
+            double new_y = rect.Y;
+            double new_width = rect.Width;
+            double new_height = rect.Height;
+            double offset_x = currentMousePosition.X - mousePosition.X;
+            double offset_y = currentMousePosition.Y - mousePosition.Y;
+
+            switch (hitType)
+            {
+                case HitType.UpperLeft:
+                    new_x += offset_x;
+                    new_y += offset_y;
+                    new_width -= offset_x;
+                    new_height -= offset_y;
+                    break;
+                case HitType.UpperRight:
+                    new_y += offset_y;
+                    new_width += offset_x;
+                    new_height -= offset_y;
+                    break;
+                case HitType.LowerRight:
+                    new_width += offset_x;
+                    new_height += offset_y;
+                    break;
+                case HitType.LowerLeft:
+                    new_x += offset_x;
+                    new_width -= offset_x;
+                    new_height += offset_y;
+                    break;
+                case HitType.Left:
+                    new_x += offset_x;
+                    new_width -= offset_x;
+                    break;
+                case HitType.Right:
+                    new_width += offset_x;
+                    break;
+                case HitType.Bottom:
+                    new_height += offset_y;
+                    break;
+                case HitType.Top:
+                    new_y += offset_y;
+                    new_height -= offset_y;
+                    break;
+            }
+            return new Rect(new_x, new_y, new_width, new_height);
+        }
+
+
+        //Обработка действий при движении мыши в рабочей области
         private void MouseMoveAction(object sender, MouseEventArgs e)
         {
  
-            Point mp = Mouse.GetPosition(WorkSpace);
-            Color color = ColorPickerButton.SelectedColor.Value;
-            SolidColorBrush myBrush = new SolidColorBrush(color);
-            switch (selectedAction)
+            Point currentMousePosition= Mouse.GetPosition(WorkSpace);
+            Rect rect;
+            if (selectedAction == ButtonType.NoneB)
             {
-                case ButtonType.NoneB: if (previousMouseState == 1)
+                if (previousMouseState == 1)
+                {
+                    if(currentFigure is Polyline)
                     {
-                        foreach (Shape ui in WorkSpace.Children)
+                        graphicElements.MovePolylineNode(currentFigure, currentMousePosition, mousePosition);
+                    }
+                    else
+                    {
+                        foreach (Shape shape in WorkSpace.Children)
                         {
-                            Point rectPos = e.GetPosition(currentFigure);
-                            graphicElements.SetPosition(ui, mp.X - mousePosition.X, mp.Y - mousePosition.Y);
+                            GraphicElements.Reposition(shape, currentMousePosition.X - mousePosition.X, currentMousePosition.Y - mousePosition.Y);
                         }
-                        mousePosition = mp;
                     }
-                    break;
-                case ButtonType.rectB:
-                    if (previousMouseState == 1)
-                    {
-                        Rect r = new Rect(mousePosition.X <= mp.X ? mousePosition.X : mp.X,
-                                         mousePosition.Y <= mp.Y ? mousePosition.Y : mp.Y,
-                                        Math.Abs(mp.X - mousePosition.X),
-                                        Math.Abs(mp.Y - mousePosition.Y));
-                        graphicElements.Resize(currentFigure, r);
-                    }
-                    break;
-                case ButtonType.lineB: break;
-                case ButtonType.fillB: break;
-                case ButtonType.deleteB: break;
-                case ButtonType.rotateB:
-                    if (previousMouseState == 1 && currentFigure != null)
-                    {
-                        graphicElements.Rotate(currentFigure, (mousePosition.X - mp.X - mousePosition.Y + mp.Y));
-                        mousePosition = mp;
-                    }
+                    mousePosition = currentMousePosition;
+                }
+            }
+            else if (selectedAction == ButtonType.rectB)
+            {
+                if (previousMouseState == 1)
+                {
+                    rect = new Rect(mousePosition.X <= currentMousePosition.X ? mousePosition.X : currentMousePosition.X,
+                                      mousePosition.Y <= currentMousePosition.Y ? mousePosition.Y : currentMousePosition.Y,
+                                     Math.Abs(currentMousePosition.X - mousePosition.X),
+                                     Math.Abs(currentMousePosition.Y - mousePosition.Y));
+                    GraphicElements.Resize(currentFigure, rect);
+                }
+            }
+            else if (selectedAction == ButtonType.rotateB)
+            {
+                if (previousMouseState == 1 && currentFigure != null)
+                {
+                    GraphicElements.Rotate(currentFigure, (mousePosition.X - currentMousePosition.X - mousePosition.Y + currentMousePosition.Y));
+                    mousePosition = currentMousePosition;
+                }
+            }
+            else if (selectedAction == ButtonType.moveB)
+            {
+                if (previousMouseState == 1 && currentFigure != null)
+                {
 
-                    break;
-                case ButtonType.moveB:
-                    if (previousMouseState == 1 && currentFigure != null)
+                    GraphicElements.Reposition(currentFigure, currentMousePosition.X - mousePosition.X, currentMousePosition.Y - mousePosition.Y);           
+                    mousePosition = currentMousePosition;
+                }
+            }
+            else if (selectedAction == ButtonType.scaleB)
+            {
+                if (previousMouseState == 1 && currentFigure != null)
+                {
+                    Rect newRect =GetNewSize(currentFigure, currentMousePosition);
+                    if ((newRect.Width > thickness * 2) && (newRect.Height > thickness * 2))
                     {
-                        if (ClickCount == 2 && currentFigure.GetType() == typeof(Polyline))
-                        {
-                            graphicElements.MovePolylineNode(currentFigure, mp, mousePosition);
-                        }
-                        else
-                        {
-                            graphicElements.SetPosition(currentFigure, mp.X - mousePosition.X, mp.Y - mousePosition.Y);
-                        }
-                        mousePosition = mp;
+                        GraphicElements.Resize(currentFigure, newRect);
                     }
-                    break;                                   
-                case ButtonType.scaleB:
-                    if (previousMouseState == 1 && currentFigure != null)
-                    {                    
-                        Rect r = graphicElements.GetPosition(currentFigure);
-                        mp = Mouse.GetPosition(WorkSpace);
-                        double angle = graphicElements.GetRotationAngle(currentFigure);
-                        Point Center = new Point(r.X + r.Width / 2, r.Y + r.Height / 2);
-                        double new_x = r.X;
-                        double new_y = r.Y;
-                        double new_width = r.Width;
-                        double new_height = r.Height;
-                        double offset_x = mp.X - mousePosition.X;
-                        double offset_y = mp.Y - mousePosition.Y;     
-
-                        switch (HT)
-                       {
-                            case HitType.UL:
-                                new_x += offset_x;
-                                new_y += offset_y;
-                                new_width -= offset_x;
-                                new_height -= offset_y;
-                                break;
-                            case HitType.UR:
-                                new_y += offset_y;
-                                new_width += offset_x;
-                                new_height -= offset_y;
-                                break;
-                            case HitType.LR:
-                                new_width += offset_x;
-                                new_height += offset_y;
-                                break;
-                            case HitType.LL:
-                                new_x += offset_x;
-                                new_width -= offset_x;
-                                new_height += offset_y;
-                                break;
-                            case HitType.L:
-                                new_x += offset_x;
-                                new_width -= offset_x;
-                                break;
-                            case HitType.R:
-                                new_width += offset_x;
-                                break;
-                            case HitType.B:
-                                new_height += offset_y;
-                                break;
-                            case HitType.T:
-                                new_y += offset_y;
-                                new_height -= offset_y;
-                                break;
-                        }
-                        if ((new_width > thickness*2) && (new_height > thickness*2))
-                        {
-                            r = new Rect(new_x, new_y, new_width, new_height);
-                            graphicElements.Resize(currentFigure, r);
-                        }                    
-                    }
-                    mousePosition = mp;
-                    break;
+                    mousePosition = currentMousePosition;
+                }
             }
         }
 
@@ -402,26 +436,28 @@ namespace Editor
             currentFigure = null;
             polylinestate = false;
             WorkSpace.Children.Clear();
- 
         }
 
         private void SaveMenuButton(object sender, RoutedEventArgs e)
         {
-            Microsoft.Win32.SaveFileDialog SFD = new Microsoft.Win32.SaveFileDialog();
-            SFD.FileName = "VectorObjects";
-            SFD.DefaultExt = "vo";
-            SFD.Filter = "Vector Objects (.txt)|*.vo";
+            Microsoft.Win32.SaveFileDialog SFD = new()
+            {
+                FileName = "VectorObjects",
+                DefaultExt = "vo",
+                Filter = "Vector Objects (.txt)|*.vo"
+            };
             if (SFD.ShowDialog() == true)
                 graphicElements.SaveToFile(SFD.FileName);
         }
 
         private void LoadMenuButton(object sender, RoutedEventArgs e)
         {
-
-            Microsoft.Win32.OpenFileDialog SFD= new Microsoft.Win32.OpenFileDialog();
-            SFD.FileName = "VectorObjects";
-            SFD.DefaultExt = "vo";
-            SFD.Filter = "Vector Objects (.txt)|*.vo";
+            Microsoft.Win32.OpenFileDialog SFD = new()
+            {
+                FileName = "VectorObjects",
+                DefaultExt = "vo",
+                Filter = "Vector Objects (.txt)|*.vo"
+            };
             if (SFD.ShowDialog() == true)
             {
                 previousMouseState = 0;
@@ -433,12 +469,9 @@ namespace Editor
             }
                
         }
-
         private void ExitMenuButton(object sender, RoutedEventArgs e)
         {
             Close();
         }
-
-
     }
 }

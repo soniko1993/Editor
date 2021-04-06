@@ -21,15 +21,15 @@ namespace Editor
     [Serializable]
     struct WorkSpaceObjects
     {
-        public List<string> ShapeType;
+        public List<string> shapeType;
         public List<double> rotateAngle;
-        public List<MyColor> BorderBrush;
-        public List<MyColor> FillBrush;
-        public List<double> Thickness;
-        public List<Rect> Position;
-        public List<double> Height;
-        public List<double> Width;
-        public List<List<Point>> PolylinePoints;
+        public List<MyColor> borderBrush;
+        public List<MyColor> fillBrush;
+        public List<double> thickness;
+        public List<Rect> position;
+        public List<double> height;
+        public List<double> width;
+        public List<List<Point>> polylinePoints;
     }
     class GraphicElements
     {
@@ -39,73 +39,88 @@ namespace Editor
             WorkSpace = workSpace;
         }
 
-        public Rectangle AddRectangle(Rect rect, SolidColorBrush BorderBrush, double thickness)
+        //Создание прямоугольника
+        public Rectangle CreateRectangle(Rect rect, SolidColorBrush BorderBrush, double thickness)
         {
-            TransformGroup tg = new TransformGroup();
-            Rectangle rectangle = new Rectangle();
-            rectangle.Height = rect.Height;
-            rectangle.Width = rect.Width;
-            rectangle.Stroke = BorderBrush;
-            rectangle.Fill = Brushes.Transparent;
-            rectangle.StrokeThickness = thickness;
-            rectangle.RenderTransform = tg;
-            SetPosition(rectangle, rect.X, rect.Y);
-            DrawFigure(rectangle);
- 
-            return rectangle;
-        }
-        public Rectangle AddRectangle(Rect rect, SolidColorBrush BorderBrush, double thickness, double angleRot)
-        {
-            TransformGroup tg = new TransformGroup();
-            Rectangle rectangle = new Rectangle();
-            rectangle.Height = rect.Height;
-            rectangle.Width = rect.Width;
-            rectangle.Stroke = BorderBrush;
-            rectangle.Fill = Brushes.Transparent;
-            rectangle.StrokeThickness = thickness;
-            rectangle.RenderTransform = tg;
-            SetPosition(rectangle, rect.X, rect.Y);
-            Rotate(rectangle, angleRot);        
+            TransformGroup transformGroup = new();
+            Rectangle rectangle = new()
+            {
+                Height = rect.Height,
+                Width = rect.Width,
+                Stroke = BorderBrush,
+                Fill = Brushes.Transparent,
+                StrokeThickness = thickness,
+                RenderTransform = transformGroup
+            };
+            Reposition(rectangle, rect.X, rect.Y);
             DrawFigure(rectangle);
 
-           
-           
             return rectangle;
         }
+
+        //Создание прямоугольника с вращением
+        public Rectangle CreateRectangle(Rect rect, SolidColorBrush BorderBrush, double thickness, double angleRot)
+        {
+            TransformGroup transformGroup = new();
+            Rectangle rectangle = new()
+            {
+                Height = rect.Height,
+                Width = rect.Width,
+                Stroke = BorderBrush,
+                Fill = Brushes.Transparent,
+                StrokeThickness = thickness,
+                RenderTransform = transformGroup
+            };
+            Reposition(rectangle, rect.X, rect.Y);
+            Rotate(rectangle, angleRot);
+            DrawFigure(rectangle);
+            return rectangle;
+        }
+
+        //Создание линии с изломами (первая точка)
         public Polyline AddLine(Point mp, SolidColorBrush BorderBrush, double thickness)
         {
-            TransformGroup tg = new TransformGroup();
-            Polyline polyline = new Polyline(); 
-            polyline.Stroke = BorderBrush;
-            polyline.StrokeThickness = thickness;
-            polyline.RenderTransform = tg;
-            PointCollection myPointCollection = new PointCollection();
-            myPointCollection.Add(mp);
+            TransformGroup transformGroup = new();
+            Polyline polyline = new()
+            {
+                Stroke = BorderBrush,
+                StrokeThickness = thickness,
+                RenderTransform = transformGroup
+            };
+            PointCollection myPointCollection = new PointCollection
+            {
+                mp
+            };
             polyline.Points = myPointCollection;
             DrawFigure(polyline);
             return polyline;
         }
 
-        public Polyline AddPointToLine(Shape shape, Point mp)
+        //Добавление точек в линию с изломами
+        public Polyline AddPointToLine(Shape shape, Point mousePosition)
         {
             Polyline polyline = (Polyline)shape;
-            polyline.Points.Add(mp);
+            polyline.Points.Add(mousePosition);
             return polyline;
         }
-        public Polyline InsertPointIntoLine(Shape shape, Point mp)
+
+        //Встав
+        public Polyline InsertPointIntoLine(Shape shape, Point mousePosition)
         {
             Polyline polyline = (Polyline)shape;
-            for (int i = 0; i < polyline.Points.Count-1; i++)
+            for (int i = 0; i < polyline.Points.Count - 1; i++)
             {
-                if (CheckIntersection(polyline.Points[i], polyline.Points[i + 1], mp, 0.01,false))
+                if (CheckIntersection(polyline.Points[i], polyline.Points[i + 1], mousePosition, 0.01, false))
                 {
-                    polyline.Points.Insert(i+1, mp);
+                    polyline.Points.Insert(i + 1, mousePosition);
                     i = polyline.Points.Count;
                 }
             }
             return polyline;
         }
-        public void Fill(Shape shape, Color color)
+
+        //Заливка примитивов
+        public static void Fill(Shape shape, Color color)
         {
             if (shape.GetType() == typeof(Rectangle))
             {
@@ -114,16 +129,19 @@ namespace Editor
             }
         }
 
-        public void FillBorder(Shape shape, Color color, double thickness)
+        //Заливка границ примитивов
+        public static void FillBorder(Shape shape, Color color, double thickness)
         {
-            SolidColorBrush mySolidColorBrush = new SolidColorBrush(color);
+            SolidColorBrush mySolidColorBrush = new(color);
             shape.Stroke = mySolidColorBrush;
             shape.StrokeThickness = thickness;
         }
 
-        public Point GetOffset(Shape shape)
+
+        //Получит сдвиг относительно начала координат
+        public static Point GetOffset(Shape shape)
         {
-            Point pt=new Point(0,0);
+            Point pt = new(0, 0);
             TransformGroup myTransformGroup = shape.RenderTransform as TransformGroup;
             foreach (Transform t in myTransformGroup.Children)
                 if (t is TranslateTransform transform)
@@ -134,26 +152,28 @@ namespace Editor
 
             return pt;
         }
-        public void Rotate(Shape shape, double angle)
+
+        //получить центр фигуры
+        public static Point GetCenter(Rect rect)
+        {
+            return new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+        }
+            
+
+        //Вращение примитивов
+        public static void Rotate(Shape shape, double angle)
         {
             if (shape is Rectangle)
             {
                 TransformGroup myTransformGroup = shape.RenderTransform as TransformGroup;
-                Rect r= GetPosition(shape);
-                Point Center = new Point(r.X + r.Width / 2, r.Y + r.Height / 2);
-                //foreach (Transform t in myTransformGroup.Children)
-                //    if (t is TranslateTransform)
-                //    {
-                //        offset.X += ((TranslateTransform)t).X;
-                //        offset.Y += ((TranslateTransform)t).Y;
-                //    }
-                // myTransformGroup.Children.Add(new RotateTransform(angle, offset.X + shape.Width / 2, offset.Y + shape.Height / 2));
+                Rect rect= GetPosition(shape);
+                Point Center = GetCenter(rect);
                 myTransformGroup.Children.Add(new RotateTransform(angle, Center.X, Center.Y));
             }               
         }
 
         //Intersection of Line (x1,x2) with Point x
-        public bool CheckIntersection(Point x1, Point x2, Point x, double GAP, bool isrect)
+        public static bool CheckIntersection(Point x1, Point x2, Point x, double GAP, bool isrect)
         {
             double dx1 = x2.X - x1.X;
             double dy1 = x2.Y - x1.Y;
@@ -163,50 +183,53 @@ namespace Editor
             double s = dx / dx1 - dy / dy1;
             if (isrect==true)
             {
-                if ((s >= -1 && s <= 1) || (x1.X == x2.X && Math.Abs(dx) < GAP) || (x1.Y == x2.Y && Math.Abs(dy) < GAP))
-                {
-                    return true;
-                }
+                if ((s >= -1 && s <= 1) || (x1.X == x2.X && Math.Abs(dx) < GAP) || (x1.Y == x2.Y && Math.Abs(dy) < GAP))               
+                    return true;              
                 else
                     return false;
             }
             else
             {
-                if (s >= -0.1 && s <= 0.1)
-                {
-                    return true;
-                }
+                if (s >= -0.1 && s <= 0.1)              
+                   return true;               
                 else
                     return false;
-            }
-
-            
+            }         
         }
-        public void MovePolylineNode(Shape shape, Point mp, Point mousePosition)
+
+        //Расстояние между двумя точкмаи
+        private double GetDistance(Point x1, Point x2)
+        {
+            return Math.Sqrt(Math.Pow(x1.X - x2.X, 2) + Math.Pow(x1.Y - x2.Y, 2));
+        }
+
+        //перемещение точек ищлома
+        public void MovePolylineNode(Shape shape, Point currentMousePosition, Point mousePosition)
         {
             Polyline polyline = (Polyline)shape;
-            Point tp;
+            Point currentPoint;
             for (int i=0; i< polyline.Points.Count; i++)
             {
-                tp = polyline.Points[i];
-                double dist = Math.Sqrt(Math.Pow(mousePosition.X - tp.X, 2) + Math.Pow(mousePosition.Y - tp.Y, 2));
+                currentPoint = polyline.Points[i];
+                double dist = GetDistance(mousePosition, currentPoint);
                 if (dist > 0 && dist < shape.StrokeThickness)
                 {
-                    polyline.Points[i] = mp;
+                    polyline.Points[i] = currentMousePosition;
                     i = polyline.Points.Count;
                 }                   
             }
         }
 
-        public void UnionPoilylinePoint(Shape shape, Point mp)
+        //Объединение точек излома на линии
+        public void UnionPolylinePoint(Shape shape)
         {
             Polyline polyline = (Polyline)shape;
-            Point tp, tp1;
+            Point point1, point2;
             for (int i = 0; i < polyline.Points.Count-1; i++)
             {
-                tp = polyline.Points[i];
-                tp1 = polyline.Points[i + 1];
-                double dist = Math.Sqrt(Math.Pow(tp1.X - tp.X, 2) + Math.Pow(tp1.Y - tp.Y, 2));
+                point1 = polyline.Points[i];
+                point2 = polyline.Points[i + 1];
+                double dist = GetDistance(point2, point1);
                 if (dist >= 0 && dist <= 20)
                 {
                     polyline.Points.RemoveAt(i);
@@ -215,85 +238,88 @@ namespace Editor
             }
         }
     
-        public void Resize(Shape shape, Rect rect)
-        {         
-            shape.Height = rect.Height;
-            shape.Width = rect.Width;
-            TransformGroup myTransformGroup = shape.RenderTransform as TransformGroup;
-            TransformGroup newTransformGroup = new TransformGroup();
-            newTransformGroup.Children.Add(new TranslateTransform(rect.X, rect.Y));
-            for (int i = 0; i < myTransformGroup.Children.Count; i++)
-                if (myTransformGroup.Children[i] is not TranslateTransform)
-                {
-                    newTransformGroup.Children.Add(myTransformGroup.Children[i]);
-                }
 
-            shape.RenderTransform = newTransformGroup;
-           // shape.RenderTransform = new TranslateTransform(rect.X, rect.Y);
-
+        //Изменение размеров примитивов
+        public static void Resize(Shape shape, Rect rect)
+        {
+            if (shape.GetType() == typeof(Rectangle))
+            {
+                double angle = GetRotationAngle(shape);
+                shape.Height = rect.Height;
+                shape.Width = rect.Width;
+                TransformGroup newTransformGroup = new();
+                Point Center = GetCenter(rect);
+                newTransformGroup.Children.Add(new TranslateTransform(rect.X, rect.Y));
+                newTransformGroup.Children.Add(new RotateTransform(angle, Center.X, Center.Y));
+                shape.RenderTransform = newTransformGroup;
+            }
+            
         }
+
+        //Добавление примитивов в Canvas
         private void DrawFigure(Shape shape)
         {         
             Panel.SetZIndex(shape, 0);
             WorkSpace.Children.Add(shape); 
         }
+
+        //Добавление примитивов из Canvas
         public void DeleteFigure(Shape figure)
         {
             WorkSpace.Children.Remove(figure);
         }
 
-        public void SetPosition(Shape shape, double left, double top)
+        //Сдвиг примитивов
+        public static void Reposition(Shape shape, double leftShift, double topShift)
         {
-            TransformGroup myTransformGroup = shape.RenderTransform as TransformGroup;
-            TranslateTransform tt = new TranslateTransform(left, top);
-            if (myTransformGroup != null)
+            TranslateTransform translateTransform = new(leftShift, topShift);
+            if (shape.RenderTransform is TransformGroup myTransformGroup)
             {              
                 if (shape.GetType() == typeof(Polyline))
                 {
                     for (int i = 0; i < ((Polyline)shape).Points.Count; i++)
                     {
-                        ((Polyline)shape).Points[i] = tt.Transform(((Polyline)shape).Points[i]);
+                        ((Polyline)shape).Points[i] = translateTransform.Transform(((Polyline)shape).Points[i]);
                     }
                 }
-                else
+                else if(shape.GetType() == typeof(Rectangle))
                 {
-                    myTransformGroup.Children.Add(tt);
+                    myTransformGroup.Children.Add(translateTransform);
                     shape.RenderTransform = myTransformGroup;
                 }
            }            
         }
-        public Rect GetPosition(Shape shape)
+        //Получить координаты примитива
+        public static Rect GetPosition(Shape shape)
         {
-            Rect r=new Rect(0,0,0,0);
-            TransformGroup myTransformGroup = shape.RenderTransform as TransformGroup;
-            double offsetX = 0, offsetY = 0;
-            if(myTransformGroup!=null)
+            Rect rect;
+            double offsetX = 0, offsetY = 0;                
+            if (shape.RenderTransform is TransformGroup myTransformGroup)
             {
                 foreach (Transform t in myTransformGroup.Children)
-                    if (t is TranslateTransform)
+                    if (t is TranslateTransform transltaeTransform)
                     {
-                        offsetX += ((TranslateTransform)t).X;
-                        offsetY += ((TranslateTransform)t).Y;
+                        offsetX += transltaeTransform.X;
+                        offsetY += transltaeTransform.Y;
                     }
             }
-            Point myShapePosition = new Point(offsetX, offsetY);
-
+            Point myShapePosition = new(offsetX, offsetY);
             Size mySize = new(shape.Width, shape.Height);
-            r = new Rect(myShapePosition, mySize);
-            return r;
+            rect = new Rect(myShapePosition, mySize);
+            return rect;
         }
 
-        public double GetRotationAngle(Shape shape)
+        //Получить угол поворота примитива
+        public static double GetRotationAngle(Shape shape)
         {
             double angle = 0;
-            if (shape.RenderTransform is TransformGroup)
+            if (shape.RenderTransform is TransformGroup transformGroup)
             {
-                TransformGroup tg = (TransformGroup)shape.RenderTransform;
-                foreach (Transform tr in tg.Children)
-                    if (tr is RotateTransform)
+                foreach (Transform transform in transformGroup.Children)
+                    if (transform is RotateTransform)
                     {
-                        RotateTransform r = tr as RotateTransform;
-                        angle += r.Angle;
+                        RotateTransform rotateTransform = transform as RotateTransform;
+                        angle += rotateTransform.Angle;
                     }
             }
             else if (shape.RenderTransform is RotateTransform)
@@ -303,96 +329,101 @@ namespace Editor
             return angle;
         }
 
+        //Объявление переменных структуры WorkSpaceObject
+        private static WorkSpaceObjects CreateWorkSpaceObject()
+        {
+            WorkSpaceObjects workSpaceObject = new();
+            workSpaceObject.borderBrush = new List<MyColor>();
+            workSpaceObject.height = new List<double>();
+            workSpaceObject.width = new List<double>();
+            workSpaceObject.rotateAngle = new List<double>();
+            workSpaceObject.fillBrush = new List<MyColor>();
+            workSpaceObject.position = new List<Rect>();
+            workSpaceObject.polylinePoints = new List<List<Point>>();
+            workSpaceObject.thickness = new List<double>();
+            workSpaceObject.shapeType = new List<string>();
+            return workSpaceObject;
+        }
+        //Преобразование цвета в формат MyColor
+        private static MyColor SetMyColor(Color color)
+        {
+            MyColor myColor = new MyColor
+            {
+                r = color.R,
+                g = color.G,
+                b = color.B,
+                a = color.A
+            };
+            return myColor;
+        }
+        //Заполнение структуры WorkSpaceObject
+        private static void AddValuesToWorkSpaceObject(WorkSpaceObjects workSpaceObject, Shape currentShape)
+        {
+            string figureTypeString;
+            SolidColorBrush brush;
+            MyColor myColor;
+            workSpaceObject.height.Add(currentShape.Height);
+            workSpaceObject.width.Add(currentShape.Width);
+            workSpaceObject.thickness.Add(currentShape.StrokeThickness);
+            brush = currentShape.Stroke as SolidColorBrush;
+            myColor = SetMyColor(brush.Color);
+            workSpaceObject.borderBrush.Add(myColor);
+
+            if (currentShape.GetType() == typeof(Rectangle))
+            {
+                figureTypeString = typeof(Rectangle).ToString();
+                workSpaceObject.shapeType.Add(figureTypeString);              
+                workSpaceObject.polylinePoints.Add(null);
+                double angle = GetRotationAngle(currentShape);
+                workSpaceObject.rotateAngle.Add(angle);
+
+                workSpaceObject.position.Add(GetPosition(currentShape));
+
+                brush = currentShape.Fill as SolidColorBrush;
+                myColor = SetMyColor(brush.Color);
+                workSpaceObject.fillBrush.Add(myColor);
+            }
+            else if (currentShape.GetType() == typeof(Polyline))
+            {
+                figureTypeString = typeof(Polyline).ToString();
+                workSpaceObject.shapeType.Add(figureTypeString);
+                workSpaceObject.rotateAngle.Add(0);
+                List<Point> polylinePoints = new();
+                for (int j = 0; j < ((Polyline)currentShape).Points.Count; j++)
+                {
+                    polylinePoints.Add(((Polyline)currentShape).Points[j]);
+                }
+                workSpaceObject.polylinePoints.Add(polylinePoints);
+                workSpaceObject.position.Add(new Rect(0, 0, 0, 0));
+                myColor = SetMyColor(Colors.Transparent);
+                workSpaceObject.fillBrush.Add(myColor);
+            }
+
+        }
+
+        //Сохранение рабочей области в файл
         public void SaveToFile(string path)
         {
-            WorkSpaceObjects wso = new WorkSpaceObjects();
-            wso.BorderBrush = new List<MyColor>();
-            wso.Height = new List<double>();
-            wso.Width = new List<double>();
-            wso.rotateAngle = new List<double>();
-            wso.FillBrush = new List<MyColor>();
-            wso.Position = new List<Rect>();
-            wso.PolylinePoints = new List<List<Point>>();
-            wso.Thickness = new List<double>();
-            wso.ShapeType = new List<string>();
+            WorkSpaceObjects workSpaceObject = CreateWorkSpaceObject();
             try
             {
-                for(int i=0; i< WorkSpace.Children.Count;i++)
+                for(int i=0; i<WorkSpace.Children.Count; i++)
                 {
-                    Shape currentShape = (Shape)WorkSpace.Children[i];
-                    string t;
-                    SolidColorBrush b;
-                    Color color;
-                    MyColor myColor;
-                    if (currentShape.GetType()==typeof(Rectangle))
-                    {
-                        t = typeof(Rectangle).ToString();
-                        wso.ShapeType.Add(t);
-                        wso.Height.Add(currentShape.Height);
-                        wso.Width.Add(currentShape.Width);
-                        wso.PolylinePoints.Add(null);
-                        wso.Thickness.Add(currentShape.StrokeThickness);
-
-                        double angle = GetRotationAngle(currentShape);
-
-                        wso.rotateAngle.Add(GetRotationAngle(currentShape));
-                        Rotate(currentShape, -angle);
-                        wso.Position.Add(GetPosition(currentShape));
-                        Rotate(currentShape, angle);
-                        b = currentShape.Stroke as SolidColorBrush;
-                        color = b.Color;
-                        myColor = new MyColor();
-                        myColor.r = color.R; myColor.g = color.G; myColor.b = color.B; myColor.a = color.A;
-                        wso.BorderBrush.Add(myColor);
-                        
-                        b = currentShape.Fill as SolidColorBrush;
-                        color = b.Color;
-                        myColor = new MyColor();
-                        myColor.r = color.R; myColor.g = color.G; myColor.b = color.B; myColor.a = color.A;
-                        wso.FillBrush.Add(myColor);
-                    }
-                    if(currentShape.GetType() == typeof(Polyline))
-                    {
-                        t = typeof(Polyline).ToString();
-                        wso.ShapeType.Add(t);
-                        wso.Height.Add(currentShape.Height);
-                        wso.Width.Add(currentShape.Width);
-                        wso.rotateAngle.Add(0);                       
-                        List<Point> pp = new List<Point>();
-                        for (int j = 0; j < ((Polyline)currentShape).Points.Count; j++)
-                        {
-                            pp.Add(((Polyline)currentShape).Points[j]);
-                        }
-                        wso.PolylinePoints.Add(pp);
-                        wso.Thickness.Add(currentShape.StrokeThickness);
-                        wso.Position.Add(new Rect(0,0,0,0));
-                        b = currentShape.Stroke as SolidColorBrush;
-
-                        color = b.Color;
-                        myColor = new MyColor();
-                        myColor.r = color.R; myColor.g = color.G; myColor.b = color.B; myColor.a = color.A;
-                        wso.BorderBrush.Add(myColor);
-
-                        color = Colors.Transparent;              
-                        myColor = new MyColor();
-                        myColor.r = color.R; myColor.g = color.G; myColor.b = color.B; myColor.a = color.A;
-                        wso.FillBrush.Add(myColor);
-                    }                
+                    AddValuesToWorkSpaceObject(workSpaceObject, WorkSpace.Children[i] as Shape);    
                 }
-
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message);
             }
             
-            FileStream fs = new FileStream(path, FileMode.Create);
+            FileStream fs = new(path, FileMode.Create);
             try
             {
-                BinaryFormatter formatter = new BinaryFormatter();
+                BinaryFormatter formatter = new();
                 //Новый стандарт для защиты от уязвимости рекомендует сериализацию только  в xml и json. 
 #pragma warning disable SYSLIB0011
-                formatter.Serialize(fs, wso);
+                formatter.Serialize(fs, workSpaceObject);
                 fs.Close();
 #pragma warning restore SYSLIB0011
             }
@@ -401,23 +432,58 @@ namespace Editor
                 MessageBox.Show(ex.Message);
             }
         }
+
+        //Преобразование цвета в формат Color
+        private Color SetColor(MyColor myColor)
+        {
+            Color color = new()
+            {
+                R = (byte)myColor.r,
+                G = (byte)myColor.g,
+                B = (byte)myColor.b,
+                A = (byte)myColor.a
+            };
+            return color;
+        }
+
+
+
+        //Добавление примитивов в рабочую область из WorkSpaceObjects
+        private void DrawFromFile(WorkSpaceObjects workSpaceObject)
+        {
+            for (int i = 0; i < workSpaceObject.shapeType.Count; i++)
+            {
+                Color color;
+                if (workSpaceObject.shapeType[i].CompareTo(typeof(Rectangle).ToString()) == 0)
+                {
+                    color = SetColor(workSpaceObject.borderBrush[i]);
+
+                    Rectangle rect = CreateRectangle(workSpaceObject.position[i], new SolidColorBrush(color), workSpaceObject.thickness[i]);
+                    Rotate(rect, workSpaceObject.rotateAngle[i]);
+                    color = SetColor(workSpaceObject.fillBrush[i]);
+                    Fill(rect, color);
+                }
+                else if (workSpaceObject.shapeType[i].CompareTo(typeof(Polyline).ToString()) == 0)
+                {
+                    color = SetColor(workSpaceObject.borderBrush[i]);
+                    Polyline polyline = AddLine(workSpaceObject.polylinePoints[i][0], new SolidColorBrush(color), workSpaceObject.thickness[i]);
+                    for (int j = 1; j < workSpaceObject.polylinePoints[i].Count; j++)
+                        AddPointToLine(polyline, workSpaceObject.polylinePoints[i][j]);
+                }
+            }
+            WorkSpace.InvalidateMeasure();
+        }
+
+        //Загрузка примитивов из файла
         public void LoadFromFile(string path)
         {         
-            BinaryFormatter formatter = new BinaryFormatter();
-            WorkSpaceObjects wso = new WorkSpaceObjects();
-            wso.BorderBrush = new List<MyColor>();
-            wso.Height = new List<double>();
-            wso.Width = new List<double>();
-            wso.FillBrush = new List<MyColor>();
-            wso.Position = new List<Rect>();
-            wso.PolylinePoints = new List<List<Point>>();
-            wso.Thickness = new List<double>();
-            wso.ShapeType = new List<string>();
+            BinaryFormatter formatter = new();
+            WorkSpaceObjects workSpaceObject = CreateWorkSpaceObject();
             try
             {
                 FileStream fs = new FileStream(path, FileMode.Open);
 #pragma warning disable SYSLIB0011
-                wso = (WorkSpaceObjects)formatter.Deserialize(fs);
+                workSpaceObject = (WorkSpaceObjects)formatter.Deserialize(fs);
                 fs.Close();
 #pragma warning restore SYSLIB0011
             }
@@ -426,40 +492,15 @@ namespace Editor
                 MessageBox.Show(ex.Message);
             }
 
+            //Добавление примитивов на рабочую область
             try
             {
-                for (int i = 0; i < wso.ShapeType.Count; i++)
-                {
-                    Color color=new Color();
-                    if (wso.ShapeType[i].CompareTo(typeof(Rectangle).ToString())==0)
-                    {
-                        color = new Color();
-                        color.R = (byte)wso.BorderBrush[i].r; color.G = (byte)wso.BorderBrush[i].g; color.B = (byte)wso.BorderBrush[i].b; color.A = (byte)wso.BorderBrush[i].a;
-                        Rectangle rect = AddRectangle(wso.Position[i], new SolidColorBrush(color), wso.Thickness[i]);
-                        Rotate(rect, wso.rotateAngle[i]);
-                        color = new Color();
-                        color.R = (byte)wso.FillBrush[i].r; color.G = (byte)wso.FillBrush[i].g; color.B = (byte)wso.FillBrush[i].b; color.A = (byte)wso.FillBrush[i].a;
-                        Fill(rect, color);                      
-                    }
-                    
-                    if (wso.ShapeType[i].CompareTo(typeof(Polyline).ToString()) == 0)
-                    {
-                        color = new Color();
-                        color.R = (byte)wso.BorderBrush[i].r; color.G = (byte)wso.BorderBrush[i].g; color.B = (byte)wso.BorderBrush[i].b; color.A = (byte)wso.BorderBrush[i].a;
-                        Polyline polyline = AddLine(wso.PolylinePoints[i][0], new SolidColorBrush(color), wso.Thickness[i]);
-                        for (int j = 1; j < wso.PolylinePoints[i].Count; j++)
-                            AddPointToLine(polyline, wso.PolylinePoints[i][j]);
-                    }
-                }
-                WorkSpace.InvalidateMeasure();
+                DrawFromFile(workSpaceObject);
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message);
             }
-
-
-
         }
     }
 }
